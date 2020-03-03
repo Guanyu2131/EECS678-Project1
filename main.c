@@ -26,6 +26,7 @@ void parseInputStr(char *inputStr, char **prgArgs) /* tokenizes input string and
   {
     prgArgs[i] = parsed;
     parsed = strtok(NULL, " \n\t");
+    i++;
   }
 }
 
