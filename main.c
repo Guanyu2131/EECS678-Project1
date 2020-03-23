@@ -17,6 +17,32 @@ int exitQuash(char *cmd)
   return 0;
 }
 
+int checkChangeDirectory(char *cmd)
+{
+  if (strcmp(cmd, "cd") == 0)
+  {
+    return 1;
+  }
+
+  return 0;
+}
+
+void changeDirectory(char *directory){
+  //printf("%s\n", directory);
+  if(directory=="~"||directory==""||directory=="home"){
+    printf("Going Home\n");
+    chdir(getenv("HOME"));
+  }
+  else{
+    if(chdir(directory)==0){
+      printf("Changed current directory to %s\n", directory);
+    }
+    else{
+      printf("Directory does not exist!\n");
+    }
+  }
+}
+
 void parseInputStr(char *inputStr, char **prgArgs) /* tokenizes input string and stores arguments in program args array */
 {
   char *parsed = strtok(inputStr, " \n\t");
@@ -44,14 +70,14 @@ void exe(char **prgArgs)
     exit(-1);
   }
 
-  else if (pid == 0)
+  else if (pid == 0) //parent
   {
     execlp(*prgArgs, *prgArgs, NULL);
     fprintf(stderr, "Program Execution Failed\n");
     exit(-1);
   }
 
-  else
+  else //child
   {
     while (1)
     {
@@ -78,8 +104,7 @@ printf("   /:::/    \\:::\\    \\      /:::/    /              /:::/__\\:::\\   
 printf("  /:::/    / \\:::\\    \\    /:::/    /              /::::\\   \\:::\\    \\      \\:::\\   \\:::\\    \\     /::::\\    \\           \n");
 printf(" /:::/____/   \\:::\\____\\  /:::/    /      _____   /::::::\\   \\:::\\    \\   ___\\:::\\   \\:::\\    \\   /::::::\\    \\   _____  \n");
 printf("|:::|    |     |:::|    |/:::/____/      /\\    \\ /:::/\\:::\\   \\:::\\    \\ /\\   \\:::\\   \\:::\\    \\ /:::/\\:::\\    \\ /\\    \\ \n");
-printf("|:::|____|     |:::|____|:::|    /      /::\\____/:::/  \\:::\\   \\:::\\____/::\\   \\:::\\   \\:::\\____/:::/  \\:::\\    /::\\____\\");
-printf("\n");
+printf("|:::|____|     |:::|____|:::|    /      /::\\____/:::/  \\:::\\   \\:::\\____/::\\   \\:::\\   \\:::\\____/:::/  \\:::\\    /::\\____\\\n");
 printf(" \\:::\\   _\\___/:::/    /|:::|____\\     /:::/    \\::/    \\:::\\  /:::/    \\:::\\   \\:::\\   \\::/    \\::/    \\:::\\  /:::/    /\n");
 printf("  \\:::\\ |::| /:::/    /  \\:::\\    \\   /:::/    / \\/____/ \\:::\\/:::/    / \\:::\\   \\:::\\   \\/____/ \\/____/ \\:::\\/:::/    / \n");
 printf("   \\:::\\|::|/:::/    /    \\:::\\    \\ /:::/    /           \\::::::/    /   \\:::\\   \\:::\\    \\              \\::::::/    /  \n");
@@ -115,6 +140,10 @@ while (1)
   {
     printf("Exiting Quash...\n");
     exit(0);
+  }
+
+  else if (checkChangeDirectory(inputArgs[0])){
+    changeDirectory(inputArgs[1]);
   }
 
   else
