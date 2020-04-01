@@ -44,9 +44,17 @@ void changeDirectory(char *directory){
   }
 }
 
-void setPath(char *path) // Work on this
+void setPath(char *path)
 {
-  return;
+  char *var = strtok(path, "=");
+  char *pathToSet = strtok(NULL, "\0");
+
+  int success = setenv(var, pathToSet, 1);
+
+  if (success < 0)
+  {
+    printf("Unable to set path for %s!\n", var);
+  }
 }
 
 void parseInputStr(char *inputStr, char **prgArgs) /* tokenizes input string and stores arguments in program args array */
@@ -69,11 +77,10 @@ void parseInputStr(char *inputStr, char **prgArgs) /* tokenizes input string and
 
 void exe(char **prgArgs)
 {
-  int exitStatus = 0;
+  int exitStatus;
 
   pid_t pid;
   pid = fork();
-
 
   if (pid < 0) // error message
   {
