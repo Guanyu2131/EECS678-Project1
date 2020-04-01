@@ -30,7 +30,7 @@ int checkChangeDirectory(char *cmd)
 
 void changeDirectory(char *directory){
   //printf("%s\n", directory);
-  if(directory=="~"||directory==""||directory=="home"){
+  if(directory=="~"||directory=="HOME"||directory==NULL){
     printf("Going Home\n");
     chdir(getenv("HOME"));
   }
@@ -92,11 +92,11 @@ void exe(char **prgArgs)
   {
     if (prgArgs[1] == NULL)
     {
+
       execlp(*prgArgs, *prgArgs, NULL);
       fprintf(stderr, "Program Execution (without args) Failed\n");
       exit(-1);
     }
-
     else
     {
       execvp(prgArgs[0], prgArgs);
@@ -142,31 +142,34 @@ int main(int argc, char **argv, char **envp)
 
   while (1)
   {
-    printf("Quash$ ");
-    fgets(inputLine, MAX_LENGTH, stdin);
 
-    printf("\n");
-    parseInputStr(inputLine, inputArgs);
+      printf("Quash$ ");
+      fgets(inputLine, MAX_LENGTH, stdin);
+      inputLine[strlen(inputLine) - 1] = '\0';
+      if(strlen(inputLine)!=0){
+        parseInputStr(inputLine, inputArgs);
+        printf("\n");
+        if (exitQuash(inputArgs[0]))
+        {
+          printf("Exiting Quash...\n");
+          exit(0);
+        }
 
-    if (exitQuash(inputArgs[0]))
-    {
-      printf("Exiting Quash...\n");
-      exit(0);
-    }
+        else if (checkChangeDirectory(inputArgs[0])){
+          changeDirectory(inputArgs[1]);
+        }
 
-    else if (checkChangeDirectory(inputArgs[0])){
-      changeDirectory(inputArgs[1]);
-    }
+        else if (strcmp(inputArgs[0], "set") == 0)
+        {
+          setPath(inputArgs[1]);
+        }
 
-    else if (strcmp(inputArgs[0], "set") == 0)
-    {
-      setPath(inputArgs[1]);
-    }
+        else
+        {
+          exe(inputArgs);
+        }
+      }
 
-    else
-    {
-      exe(inputArgs);
-    }
   }
 
   return 0;
