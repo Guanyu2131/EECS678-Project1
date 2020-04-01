@@ -79,7 +79,7 @@ void exe(char **prgArgs)
   else if (pid == 0) // child
   {
     //prgArgs[strlen(prgArgs) - 1] = NULL;
-    execlp(prgArgs[0], prgArgs, NULL);
+    execlp(*prgArgs, *prgArgs, NULL);
     fprintf(stderr, "Program Execution Failed\n");
     exit(-1);
   }
