@@ -44,7 +44,7 @@ void changeDirectory(char *directory){
   }
 }
 
-void setPath(char *path)
+void setPath(char *path) // Work on this
 {
   return;
 }
@@ -59,6 +59,11 @@ void parseInputStr(char *inputStr, char **prgArgs) /* tokenizes input string and
     prgArgs[i] = parsed;
     parsed = strtok(NULL, " \n\t");
     i++;
+  }
+
+  if (parsed == NULL)
+  {
+    prgArgs[i] = NULL;
   }
 }
 
@@ -78,21 +83,24 @@ void exe(char **prgArgs)
 
   else if (pid == 0) // child
   {
-    //prgArgs[strlen(prgArgs) - 1] = NULL;
-    execlp(*prgArgs, *prgArgs, NULL);
-    fprintf(stderr, "Program Execution Failed\n");
-    exit(-1);
+    if (prgArgs[1] == NULL)
+    {
+      execlp(*prgArgs, *prgArgs, NULL);
+      fprintf(stderr, "Program Execution (without args) Failed\n");
+      exit(-1);
+    }
+
+    else
+    {
+      execvp(prgArgs[0], prgArgs);
+      fprintf(stderr, "Program Execution (with args) Failed\n");
+      exit(-1);
+    }
   }
 
   else // parent
   {
-    while (1)
-    {
-      if (wait(&exitStatus) == pid)
-      {
-        return;
-      }
-    }
+    waitpid(pid, &exitStatus, 0);
   }
 }
 
@@ -119,7 +127,6 @@ int main(int argc, char **argv, char **envp)
   printf("        |::|    |              \\::::/    /              /:::/    /             \\::::/    /              /:::/    /       \n");
   printf("        |::|____|               \\::/____/               \\::/    /               \\::/    /               \\::/    /        \n");
   printf("         ~~                      ~~                      \\/____/                 \\/____/                 \\/____/         \n\n\n");
-
 
   printf("Type the word exit or quit to exit Quash\n\n");
 
