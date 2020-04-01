@@ -297,7 +297,7 @@ int main(int argc, char **argv, char **envp)
       printf("Quash$ ");
       fgets(inputLine, MAX_LENGTH, stdin);
       inputLine[strlen(inputLine)-1] = '\0';
-      while((inputLine[strlen(inputLine)-1]==' ')){
+      while((inputLine[strlen(inputLine)-1]==' ' || inputLine[strlen(inputLine)-1]=='\t')){
         inputLine[strlen(inputLine)-1] = '\0';
       }
       if(strlen(inputLine)!=0){
