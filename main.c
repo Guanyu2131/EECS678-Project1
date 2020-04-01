@@ -7,6 +7,12 @@
 
 #define MAX_LENGTH 1024
 
+static int pipeFound = 0;
+static int pipeIndex = 0;
+static int numArgs = 0; // modified in parseInputStr
+static int hasRedirect = 0; // modified in parseInputStr
+static int redirectIndex = 0;
+
 int exitQuash(char *cmd)
 {
   if (strcmp(cmd, "exit") == 0 || strcmp(cmd, "quit") == 0)
@@ -16,7 +22,6 @@ int exitQuash(char *cmd)
 
   return 0;
 }
-
 
 int checkChangeDirectory(char *cmd)
 {
@@ -61,10 +66,23 @@ void parseInputStr(char *inputStr, char **prgArgs) /* tokenizes input string and
 {
   char *parsed = strtok(inputStr, " \n\t");
   int i = 0;
+  numArgs = 0;
 
   while (parsed != NULL)
   {
     prgArgs[i] = parsed;
+
+    if (strcmp(prgArgs[i], "<") == 0 || strcmp(prgArgs[i], ">") == 0)
+    {
+      hasRedirect = 1;
+    }
+
+    if (strcmp(prgArgs[i], "|") == 0)
+    {
+      pipeFound = 1;
+      pipeIndex = i;
+    }
+
     parsed = strtok(NULL, " \n\t");
     i++;
   }
@@ -73,6 +91,8 @@ void parseInputStr(char *inputStr, char **prgArgs) /* tokenizes input string and
   {
     prgArgs[i] = NULL;
   }
+
+  numArgs = i - 1;
 }
 
 void exe(char **prgArgs)
@@ -111,6 +131,96 @@ void exe(char **prgArgs)
   }
 }
 
+void makePipe(char **args)
+{
+  if (pipeIndex != 0 && pipeIndex != numArgs)
+  {
+    char *leftCmd[50];
+    char *rightCmd[50];
+
+    for (int i = 0; i < pipeIndex; i++)
+    {
+      leftCmd[i] = args[i];
+      //printf("%s\n", leftCmd[i]);
+    }
+
+    leftCmd[pipeIndex] = NULL;
+
+    int j = 0;
+
+    for (int i = pipeIndex + 1; i < numArgs + 1; i++)
+    {
+      rightCmd[j] = args[i];
+      //printf("%s\n", rightCmd[j]);
+      j++;
+    }
+
+    rightCmd[numArgs + 1] = NULL;
+
+    int fds[2];
+    pipe(fds);
+
+    pid_t pid1, pid2;
+    pid1 = fork();
+
+    int exitStat;
+
+    if (pid1 < 0)
+    {
+      fprintf(stderr, "Fork Failed for makePipe pid1\n");
+      exit(-1);
+    }
+
+    else if (pid1 == 0)
+    {
+      close(fds[0]);
+      dup2(fds[1], STDOUT_FILENO);
+      close(fds[1]);
+
+      if (execvp(leftCmd[0], leftCmd) < 0)
+      {
+        printf("Error executing left command!\n");
+        exit(0);
+      }
+    }
+
+    else
+    {
+      pid2 = fork();
+
+      if (pid2 < 0)
+      {
+        fprintf(stderr, "Fork Failed for makePipe pid2\n");
+        exit(-1);
+      }
+
+      else if (pid2 == 0)
+      {
+        close(fds[1]);
+        dup2(fds[0], STDIN_FILENO);
+        close(fds[0]);
+
+        if (execvp(rightCmd[0], rightCmd) < 0)
+        {
+          printf("Error executing right command!\n");
+          exit(0);
+        }
+      }
+
+      else
+      {
+        waitpid(pid1, &exitStat, 0);
+        waitpid(pid2, &exitStat, 0);
+      }
+    }
+  }
+
+  else
+  {
+    printf("Syntax Error: Invalid use of '|' command.\n");
+  }
+}
+
 int main(int argc, char **argv, char **envp)
 {
   printf("         _______                  _____                   _____                   _____                   _____          \n");
@@ -142,34 +252,42 @@ int main(int argc, char **argv, char **envp)
 
   while (1)
   {
-
       printf("Quash$ ");
       fgets(inputLine, MAX_LENGTH, stdin);
       inputLine[strlen(inputLine) - 1] = '\0';
+
       if(strlen(inputLine)!=0){
         parseInputStr(inputLine, inputArgs);
-        printf("\n");
-        if (exitQuash(inputArgs[0]))
-        {
-          printf("Exiting Quash...\n");
-          exit(0);
-        }
 
-        else if (checkChangeDirectory(inputArgs[0])){
-          changeDirectory(inputArgs[1]);
-        }
+      printf("\n");
 
-        else if (strcmp(inputArgs[0], "set") == 0)
-        {
-          setPath(inputArgs[1]);
-        }
-
-        else
-        {
-          exe(inputArgs);
-        }
+      if (exitQuash(inputArgs[0]))
+      {
+        printf("Exiting Quash...\n");
+        exit(0);
       }
 
+      else if (checkChangeDirectory(inputArgs[0])){
+        changeDirectory(inputArgs[1]);
+      }
+
+      else if (strcmp(inputArgs[0], "set") == 0)
+      {
+        setPath(inputArgs[1]);
+      }
+
+      else if (pipeFound)
+      {
+        makePipe(inputArgs);
+        pipeFound = 0;
+        pipeIndex = 0;
+      }
+
+      else
+      {
+        exe(inputArgs);
+      }
+    }
   }
 
   return 0;
