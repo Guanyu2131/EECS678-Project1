@@ -6,12 +6,20 @@
 #include <sys/wait.h>
 
 #define MAX_LENGTH 1024
-
 static int pipeFound = 0;
 static int pipeIndex = 0;
 static int numArgs = 0; // modified in parseInputStr
-static int hasRedirect = 0; // modified in parseInputStr
+static int hasRedirect = 0;
 static int redirectIndex = 0;
+
+struct Process
+{
+  int id;
+  int pid;
+  char* command;
+};
+static int totalJobs=1;
+static struct Process myJobs[MAX_LENGTH];
 
 int exitQuash(char *cmd)
 {
@@ -23,19 +31,32 @@ int exitQuash(char *cmd)
   return 0;
 }
 
+
+int checkJobs(char *cmd)
+{
+  if (strcmp(cmd, "jobs") == 0)
+  {
+    return 1;
+  }
+  else{
+    return 0;
+  }
+}
+
 int checkChangeDirectory(char *cmd)
 {
   if (strcmp(cmd, "cd") == 0)
   {
     return 1;
   }
-
-  return 0;
+  else{
+    return 0;
+  }
 }
 
 void changeDirectory(char *directory){
   //printf("%s\n", directory);
-  if(directory=="~"||directory=="HOME"||directory==NULL){
+  if(directory==NULL){
     printf("Going Home\n");
     chdir(getenv("HOME"));
   }
@@ -43,10 +64,24 @@ void changeDirectory(char *directory){
     if(chdir(directory)==0){
       printf("Changed current directory to %s\n", directory);
     }
+    else if(strcmp(directory, "~") == 0 || strcmp(directory, "HOME") == 0){
+      printf("Going Home\n");
+      chdir(getenv("HOME"));
+    }
     else{
       printf("Directory does not exist!\n");
     }
   }
+}
+
+void jobs(char *directory){
+  for (int i = 0; i < totalJobs; i++) {
+    pid_t pid=getpid();
+    printf("[%d] PID: %d, COMMAND: %s\n", myJobs[i].id,  myJobs[i].pid,  myJobs[i].command);
+    //pid_t ppid=getppid();
+    //printf("PPID:%d\n", ppid);
+  }
+
 }
 
 void setPath(char *path)
@@ -110,14 +145,17 @@ void exe(char **prgArgs)
 
   else if (pid == 0) // child
   {
+    totalJobs++;
+    myJobs[totalJobs-1].id=totalJobs-1;
+    myJobs[totalJobs-1].pid=getpid();
+    myJobs[totalJobs-1].command="";
     if (prgArgs[1] == NULL)
     {
-
       execlp(*prgArgs, *prgArgs, NULL);
       fprintf(stderr, "Program Execution (without args) Failed\n");
       exit(-1);
     }
-    else
+    else // parent
     {
       execvp(prgArgs[0], prgArgs);
       fprintf(stderr, "Program Execution (with args) Failed\n");
@@ -249,23 +287,38 @@ int main(int argc, char **argv, char **envp)
 
   char inputLine[MAX_LENGTH]; // command line
   char *inputArgs[100]; // args for command
+  myJobs[0].id=0;
+  myJobs[0].pid=getpid();
+  myJobs[0].command="quash";
+
 
   while (1)
   {
       printf("Quash$ ");
       fgets(inputLine, MAX_LENGTH, stdin);
-      inputLine[strlen(inputLine) - 1] = '\0';
-
+      inputLine[strlen(inputLine)-1] = '\0';
+      while((inputLine[strlen(inputLine)-1]==' ')){
+        inputLine[strlen(inputLine)-1] = '\0';
+      }
       if(strlen(inputLine)!=0){
         parseInputStr(inputLine, inputArgs);
 
       printf("\n");
 
-      if (exitQuash(inputArgs[0]))
-      {
-        printf("Exiting Quash...\n");
-        exit(0);
-      }
+        if (exitQuash(inputArgs[0]))
+        {
+          printf("Exiting Quash...\n");
+          exit(0);
+        }
+
+        else if (checkJobs(inputArgs[0])){
+          jobs(inputArgs[1]);
+        }
+
+        else if (strcmp(inputArgs[0], "set") == 0)
+        {
+          setPath(inputArgs[1]);
+        }
 
       else if (checkChangeDirectory(inputArgs[0])){
         changeDirectory(inputArgs[1]);
