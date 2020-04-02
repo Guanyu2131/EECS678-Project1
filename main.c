@@ -208,7 +208,7 @@ void exePid(char **prgArgs, pid_t pid)
     myJobs[totalJobs-1].command="";
     if (prgArgs[1] == NULL)
     {
-      execlp(*prgArgs, *prgArgs, NULL);
+      execvp(prgArgs[0], prgArgs);
       fprintf(stderr, "Program Execution (without args) Failed\n");
       exit(0);
     }
@@ -268,7 +268,7 @@ void runBackground(char **inputArgs)
   }
 }
 
-void makePipe(char **args)
+void makePipe()
 {
   if (pipeIndex != 0 && pipeIndex != numArgs)
   {
@@ -365,30 +365,44 @@ void makePipe(char **args)
   }
 }
 
-void redirect(char **args)
+void redirect()
 {
   if (redirectIndex != 0 && redirectIndex != numArgs)
   {
     char *leftCmd[50];
     char *rightCmd[50];
-    printf("%s\n", inputLineCopy);
 
-    for (int i = 0; i < redirectIndex; i++)
+    char *parseLeft = strtok(inputLineCopy, "|");
+    char *parseRight = strtok(NULL, "\0");
+    int i = 0;
+    int j = 0;
+
+    char* parser = strtok(parseLeft, " \n\t");
+
+    while (parser != NULL)
     {
-      leftCmd[i] = args[i];
-      while((leftCmd[i][strlen(leftCmd[i])-1]==' ' || leftCmd[i][strlen(leftCmd[i])-1]=='\t')){
-        leftCmd[i][strlen(leftCmd[i])-1] = '\0';
-      }
+      leftCmd[i] = parser;
+      parser = strtok(NULL, " \n\t");
+      i++;
     }
 
-    int j = 0;
-    for (int i = redirectIndex + 1; i < redirectIndex; i++)
+    if (parser == NULL)
     {
-      rightCmd[j] = args[i];
-      while((rightCmd[j][strlen(rightCmd[j])-1]==' ' || rightCmd[j][strlen(rightCmd[j])-1]=='\t')){
-        leftCmd[i][strlen(leftCmd[i])-1] = '\0';
-      }
+      leftCmd[i] = NULL;
+    }
+
+    parser = strtok(parseRight, " \n\t");
+
+    while (parser != NULL)
+    {
+      rightCmd[j] = parser;
+      parser = strtok(NULL, " \n\t");
       j++;
+    }
+
+    if (parser == NULL)
+    {
+      rightCmd[j] = NULL;
     }
 
     if (redirectSymbol == '>')
@@ -508,7 +522,7 @@ int main(int argc, char **argv, char **envp)
 
         else if (pipeFound)
         {
-          makePipe(inputArgs);
+          makePipe();
           pipeFound = 0;
           pipeIndex = 0;
         }
@@ -522,7 +536,7 @@ int main(int argc, char **argv, char **envp)
 
         else if (hasRedirect)
         {
-          redirect(inputArgs);
+          redirect();
           hasRedirect = 0;
           redirectIndex = 0;
           redirectSymbol = '\0';
