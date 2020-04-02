@@ -132,6 +132,12 @@ void parseInputStr(char *inputStr, char **prgArgs) /* tokenizes input string and
 
 void exe(char **prgArgs)
 {
+  // For testing
+  /*printf("%s\n", prgArgs[0]);
+  printf("%s\n", prgArgs[1]);
+  printf("%s\n", prgArgs[2]);
+  printf("\n");*/
+
   int exitStatus;
 
   pid_t pid;
@@ -180,9 +186,14 @@ void makePipe(char **args)
     {
       leftCmd[i] = args[i];
       //printf("%s\n", leftCmd[i]);
+      //strcat(leftCmd[i], '\0', 1);
+      //printf("Left arg %d: %s\n", i, leftCmd[i]);
     }
 
-    leftCmd[pipeIndex] = NULL;
+    //printf("\n\n\n");
+
+    leftCmd[pipeIndex] = "\0";
+    leftCmd[49] = "\0";
 
     int j = 0;
 
@@ -190,18 +201,22 @@ void makePipe(char **args)
     {
       rightCmd[j] = args[i];
       //printf("%s\n", rightCmd[j]);
+      //strcat(rightCmd[i], '\0', 1);
       j++;
     }
 
-    rightCmd[numArgs + 1] = NULL;
+    rightCmd[numArgs + 1] = "\0";
+    rightCmd[49] = "\0";
 
     int fds[2];
     pipe(fds);
 
-    pid_t pid1, pid2;
+    pid_t pid1;
+    pid_t pid2;
     pid1 = fork();
 
-    int exitStat;
+    int exitStatus1;
+    int exitStatus2;
 
     if (pid1 < 0)
     {
@@ -214,42 +229,49 @@ void makePipe(char **args)
       close(fds[0]);
       dup2(fds[1], STDOUT_FILENO);
       close(fds[1]);
+      exe(leftCmd);
+      exit(-1);
 
-      if (execvp(leftCmd[0], leftCmd) < 0)
+      /*if (execvp(leftCmd[0], leftCmd) < 0)
       {
-        printf("Error executing left command!\n");
-        exit(0);
-      }
+        fprintf(stderr, "Error executing left command!\n");
+        exit(-1);
+      }*/
     }
 
     else
     {
-      pid2 = fork();
+      waitpid(pid1, &exitStatus1, 0);
+    }
 
-      if (pid2 < 0)
+    pid2 = fork();
+
+    if (pid2 < 0)
+    {
+      fprintf(stderr, "Fork Failed for makePipe pid2\n");
+      exit(-1);
+    }
+
+    else if (pid2 == 0)
+    {
+      close(fds[1]);
+      dup2(fds[0], STDIN_FILENO);
+      close(fds[0]);
+      exe(rightCmd);
+      exit(-1);
+
+      /*if (execvp(rightCmd[0], rightCmd) < 0)
       {
-        fprintf(stderr, "Fork Failed for makePipe pid2\n");
+        fprintf(stderr, "Error executing right command!\n");
         exit(-1);
-      }
+      }*/
+    }
 
-      else if (pid2 == 0)
-      {
-        close(fds[1]);
-        dup2(fds[0], STDIN_FILENO);
-        close(fds[0]);
-
-        if (execvp(rightCmd[0], rightCmd) < 0)
-        {
-          printf("Error executing right command!\n");
-          exit(0);
-        }
-      }
-
-      else
-      {
-        waitpid(pid1, &exitStat, 0);
-        waitpid(pid2, &exitStat, 0);
-      }
+    else
+    {
+      waitpid(pid2, &exitStatus2, 0);
+      close(fds[0]);
+      close(fds[1]);
     }
   }
 
@@ -297,13 +319,15 @@ int main(int argc, char **argv, char **envp)
       printf("Quash$ ");
       fgets(inputLine, MAX_LENGTH, stdin);
       inputLine[strlen(inputLine)-1] = '\0';
+
       while((inputLine[strlen(inputLine)-1]==' ' || inputLine[strlen(inputLine)-1]=='\t')){
         inputLine[strlen(inputLine)-1] = '\0';
       }
+
       if(strlen(inputLine)!=0){
         parseInputStr(inputLine, inputArgs);
 
-      printf("\n");
+        printf("\n");
 
         if (exitQuash(inputArgs[0]))
         {
@@ -315,33 +339,34 @@ int main(int argc, char **argv, char **envp)
           jobs(inputArgs[1]);
         }
 
+
+        else if (checkChangeDirectory(inputArgs[0])){
+          changeDirectory(inputArgs[1]);
+        }
+
         else if (strcmp(inputArgs[0], "set") == 0)
         {
           setPath(inputArgs[1]);
         }
 
-      else if (checkChangeDirectory(inputArgs[0])){
-        changeDirectory(inputArgs[1]);
-      }
+        else if (pipeFound)
+        {
+          makePipe(inputArgs);
+          pipeFound = 0;
+          pipeIndex = 0;
+        }
 
-      else if (strcmp(inputArgs[0], "set") == 0)
-      {
-        setPath(inputArgs[1]);
-      }
+        else if (hasRedirect)
+        {
+          hasRedirect = 0;
+        }
 
-      else if (pipeFound)
-      {
-        makePipe(inputArgs);
-        pipeFound = 0;
-        pipeIndex = 0;
-      }
-
-      else
-      {
-        exe(inputArgs);
+        else
+        {
+          exe(inputArgs);
+        }
       }
     }
-  }
 
   return 0;
 }
