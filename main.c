@@ -18,7 +18,7 @@ struct Process
   int pid;
   char* command;
 };
-static int totalJobs=1;
+static int totalJobs;
 static struct Process myJobs[MAX_LENGTH];
 
 int exitQuash(char *cmd)
@@ -75,11 +75,10 @@ void changeDirectory(char *directory){
 }
 
 void jobs(char *directory){
+  printf("Running Processes:\n");
   for (int i = 0; i < totalJobs; i++) {
     pid_t pid=getpid();
     printf("[%d] PID: %d, COMMAND: %s\n", myJobs[i].id,  myJobs[i].pid,  myJobs[i].command);
-    //pid_t ppid=getppid();
-    //printf("PPID:%d\n", ppid);
   }
 
 }
@@ -133,10 +132,10 @@ void parseInputStr(char *inputStr, char **prgArgs) /* tokenizes input string and
 void exe(char **prgArgs)
 {
   // For testing
-  /*printf("%s\n", prgArgs[0]);
-  printf("%s\n", prgArgs[1]);
-  printf("%s\n", prgArgs[2]);
-  printf("\n");*/
+  // printf("%s\n", prgArgs[0]);
+  // //printf("%s\n", prgArgs[1]);
+  // //printf("%s\n", prgArgs[2]);
+  // printf("\n");
 
   int exitStatus;
 
@@ -159,13 +158,14 @@ void exe(char **prgArgs)
     {
       execlp(*prgArgs, *prgArgs, NULL);
       fprintf(stderr, "Program Execution (without args) Failed\n");
-      exit(-1);
+      exit(0);
     }
-    else // parent
+    else
     {
       execvp(prgArgs[0], prgArgs);
       fprintf(stderr, "Program Execution (with args) Failed\n");
-      exit(-1);
+      printf("%s\n", prgArgs[0]);
+      exit(0);
     }
   }
 
@@ -185,28 +185,26 @@ void makePipe(char **args)
     for (int i = 0; i < pipeIndex; i++)
     {
       leftCmd[i] = args[i];
-      //printf("%s\n", leftCmd[i]);
-      //strcat(leftCmd[i], '\0', 1);
-      //printf("Left arg %d: %s\n", i, leftCmd[i]);
+      while((leftCmd[i][strlen(leftCmd[i])-1]==' ' || leftCmd[i][strlen(leftCmd[i])-1]=='\t')){
+        leftCmd[i][strlen(leftCmd[i])-1] = '\0';
+      }
+      printf("%s\n", leftCmd[i]);
+      //strcat(leftCmd[i], '\0');
+      printf("Left arg %d: %s\n", i, leftCmd[i]);
     }
 
-    //printf("\n\n\n");
-
-    leftCmd[pipeIndex] = "\0";
-    leftCmd[49] = "\0";
-
     int j = 0;
-
-    for (int i = pipeIndex + 1; i < numArgs + 1; i++)
+    for (int i = pipeIndex + 1; i < numArgs; i++)
     {
       rightCmd[j] = args[i];
-      //printf("%s\n", rightCmd[j]);
+      while((rightCmd[j][strlen(rightCmd[j])-1]==' ' || rightCmd[j][strlen(rightCmd[j])-1]=='\t')){
+        leftCmd[i][strlen(leftCmd[i])-1] = '\0';
+      }
+      printf("%s\n", rightCmd[j]);
       //strcat(rightCmd[i], '\0', 1);
       j++;
     }
 
-    rightCmd[numArgs + 1] = "\0";
-    rightCmd[49] = "\0";
 
     int fds[2];
     pipe(fds);
@@ -223,22 +221,17 @@ void makePipe(char **args)
       fprintf(stderr, "Fork Failed for makePipe pid1\n");
       exit(-1);
     }
-
     else if (pid1 == 0)
     {
-      close(fds[0]);
+      totalJobs++;
+      myJobs[totalJobs-1].id=totalJobs-1;
+      myJobs[totalJobs-1].pid=getpid();
+      myJobs[totalJobs-1].command=leftCmd[0];
       dup2(fds[1], STDOUT_FILENO);
-      close(fds[1]);
+      close(fds[0]);
       exe(leftCmd);
-      exit(-1);
-
-      /*if (execvp(leftCmd[0], leftCmd) < 0)
-      {
-        fprintf(stderr, "Error executing left command!\n");
-        exit(-1);
-      }*/
+      exit(0);
     }
-
     else
     {
       waitpid(pid1, &exitStatus1, 0);
@@ -251,20 +244,16 @@ void makePipe(char **args)
       fprintf(stderr, "Fork Failed for makePipe pid2\n");
       exit(-1);
     }
-
     else if (pid2 == 0)
     {
-      close(fds[1]);
+      totalJobs++;
+      myJobs[totalJobs-1].id=totalJobs-1;
+      myJobs[totalJobs-1].pid=getpid();
+      myJobs[totalJobs-1].command=rightCmd[0];
       dup2(fds[0], STDIN_FILENO);
-      close(fds[0]);
+      close(fds[1]);
       exe(rightCmd);
-      exit(-1);
-
-      /*if (execvp(rightCmd[0], rightCmd) < 0)
-      {
-        fprintf(stderr, "Error executing right command!\n");
-        exit(-1);
-      }*/
+      exit(0);
     }
 
     else
@@ -274,7 +263,6 @@ void makePipe(char **args)
       close(fds[1]);
     }
   }
-
   else
   {
     printf("Syntax Error: Invalid use of '|' command.\n");
@@ -309,6 +297,7 @@ int main(int argc, char **argv, char **envp)
 
   char inputLine[MAX_LENGTH]; // command line
   char *inputArgs[100]; // args for command
+  totalJobs=1;
   myJobs[0].id=0;
   myJobs[0].pid=getpid();
   myJobs[0].command="quash";
