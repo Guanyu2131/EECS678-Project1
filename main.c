@@ -16,6 +16,7 @@ static int numArgs = 0; // modified in parseInputStr
 static int hasRedirect = 0;
 static int redirectIndex = 0;
 static char redirectSymbol = '\0';
+char *inputLineCopy;
 
 struct Process
 {
@@ -274,24 +275,38 @@ void makePipe(char **args)
     char *leftCmd[50];
     char *rightCmd[50];
 
-    for (int i = 0; i < pipeIndex; i++)
+    char *parseLeft = strtok(inputLineCopy, "|");
+    char *parseRight = strtok(NULL, "\0");
+    int i = 0;
+    int j = 0;
+
+    char* parser = strtok(parseLeft, " \n\t");
+
+    while (parser != NULL)
     {
-      leftCmd[i] = args[i];
-      while((leftCmd[i][strlen(leftCmd[i])-1]==' ' || leftCmd[i][strlen(leftCmd[i])-1]=='\t')){
-        leftCmd[i][strlen(leftCmd[i])-1] = '\0';
-      }
+      leftCmd[i] = parser;
+      parser = strtok(NULL, " \n\t");
+      i++;
     }
 
-    int j = 0;
-    for (int i = pipeIndex + 1; i < numArgs; i++)
+    if (parser == NULL)
     {
-      rightCmd[j] = args[i];
-      while((rightCmd[j][strlen(rightCmd[j])-1]==' ' || rightCmd[j][strlen(rightCmd[j])-1]=='\t')){
-        leftCmd[i][strlen(leftCmd[i])-1] = '\0';
-      }
+      leftCmd[i] = NULL;
+    }
+
+    parser = strtok(parseRight, " \n\t");
+
+    while (parser != NULL)
+    {
+      rightCmd[j] = parser;
+      parser = strtok(NULL, " \n\t");
       j++;
     }
 
+    if (parser == NULL)
+    {
+      rightCmd[j] = NULL;
+    }
 
     int fds[2];
     pipe(fds);
@@ -356,6 +371,7 @@ void redirect(char **args)
   {
     char *leftCmd[50];
     char *rightCmd[50];
+    printf("%s\n", inputLineCopy);
 
     for (int i = 0; i < redirectIndex; i++)
     {
@@ -408,7 +424,7 @@ void redirect(char **args)
 
     else if (redirectSymbol == '<')
     {
-      
+
     }
   }
 
@@ -462,6 +478,8 @@ int main(int argc, char **argv, char **envp)
       while((inputLine[strlen(inputLine)-1]==' ' || inputLine[strlen(inputLine)-1]=='\t')){
         inputLine[strlen(inputLine)-1] = '\0';
       }
+
+      inputLineCopy = strdup(inputLine);
 
       if(strlen(inputLine)!=0){
         parseInputStr(inputLine, inputArgs);
