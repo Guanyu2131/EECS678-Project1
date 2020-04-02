@@ -13,14 +13,16 @@ static int ampersandIndex=0;
 static int numArgs = 0; // modified in parseInputStr
 static int hasRedirect = 0;
 static int redirectIndex = 0;
+static char* backgroundCommand;
 
 struct Process
 {
   int id;
   int pid;
-  char* command;
+  char* cmd;
 };
 static int totalJobs;
+static int nextId;
 static struct Process myJobs[MAX_LENGTH];
 
 int exitQuash(char *cmd)
@@ -80,7 +82,7 @@ void jobs(char *directory){
   printf("Running Processes:\n");
   for (int i = 0; i < totalJobs; i++) {
     pid_t pid=getpid();
-    printf("[%d] PID: %d, COMMAND: %s\n", myJobs[i].id,  myJobs[i].pid,  myJobs[i].command);
+    printf("[%d] PID: %d, COMMAND: %s\n", myJobs[i].id,  myJobs[i].pid,  myJobs[i].cmd);
   }
 
 }
@@ -158,10 +160,6 @@ void exe(char **prgArgs)
 
   else if (pid == 0) // child
   {
-    totalJobs++;
-    myJobs[totalJobs-1].id=totalJobs-1;
-    myJobs[totalJobs-1].pid=getpid();
-    myJobs[totalJobs-1].command="";
     if (prgArgs[1] == NULL)
     {
       execlp(*prgArgs, *prgArgs, NULL);
@@ -185,16 +183,44 @@ void exe(char **prgArgs)
 
 void runBackground(char **inputArgs)
 {
-  if (ampersandIndex != 0 && ampersandIndex != numArgs)
+  if (ampersandIndex != 0)
   {
-    char* cmd[100];
-
+    char* cmd[ampersandIndex];
+    cmd[ampersandIndex]=NULL;
     for (int i = 0; i < ampersandIndex; i++)
     {
       cmd[i] = inputArgs[i];
-      while((cmd[i][strlen(cmd[i])-1]==' ' || cmd[i][strlen(cmd[i])-1]=='\t' || cmd[i][strlen(cmd[i])-1]=='&')){
+      while((cmd[i][strlen(cmd[i])-1]==' ' || cmd[i][strlen(cmd[i])-1]=='\t')){
         cmd[i][strlen(cmd[i])-1] = '\0';
       }
+    }
+
+    int exitStatus;
+    pid_t pid;
+    totalJobs++;
+    backgroundCommand=cmd[0];
+    printf("backgroundCommand is : %s\n", cmd[0] );
+    pid=fork();
+    if (pid < 0){ //error
+      fprintf(stderr, "Fork Failed for run process in background\n");
+      exit(-1);
+    }
+    else if(pid==0){ //child
+      printf("[%d] PID: %d running in background\n", nextId, getpid());
+      sleep(5);
+      exe(cmd);
+      printf("\n[%d] PID: %d finished COMMAND: %s\n\nQuash$ ", nextId, getpid(), cmd[0]);
+      exit(0);
+
+    }
+    else{ //parent
+      printf("command:%s\n", cmd[0]);
+      myJobs[totalJobs-1].id=nextId;
+      myJobs[totalJobs-1].pid=pid;
+      myJobs[totalJobs-1].cmd=backgroundCommand;
+      nextId++;
+      waitpid(pid, &exitStatus, SIGCHLD);
+
     }
   }
 }
@@ -221,8 +247,6 @@ void makePipe(char **args)
       while((rightCmd[j][strlen(rightCmd[j])-1]==' ' || rightCmd[j][strlen(rightCmd[j])-1]=='\t')){
         leftCmd[i][strlen(leftCmd[i])-1] = '\0';
       }
-      //printf("%s\n", rightCmd[j]);
-      //strcat(rightCmd[i], '\0', 1);
       j++;
     }
 
@@ -244,10 +268,6 @@ void makePipe(char **args)
     }
     else if (pid1 == 0)
     {
-      totalJobs++;
-      myJobs[totalJobs-1].id=totalJobs-1;
-      myJobs[totalJobs-1].pid=getpid();
-      myJobs[totalJobs-1].command=leftCmd[0];
       dup2(fds[1], STDOUT_FILENO);
       close(fds[0]);
       exe(leftCmd);
@@ -267,10 +287,6 @@ void makePipe(char **args)
     }
     else if (pid2 == 0)
     {
-      totalJobs++;
-      myJobs[totalJobs-1].id=totalJobs-1;
-      myJobs[totalJobs-1].pid=getpid();
-      myJobs[totalJobs-1].command=rightCmd[0];
       dup2(fds[0], STDIN_FILENO);
       close(fds[1]);
       exe(rightCmd);
@@ -319,10 +335,11 @@ int main(int argc, char **argv, char **envp)
   char inputLine[MAX_LENGTH]; // command line
   char *inputArgs[100]; // args for command
   totalJobs=1;
-  myJobs[0].id=0;
+  nextId=1;
+  myJobs[0].id=nextId;
   myJobs[0].pid=getpid();
-  myJobs[0].command="quash";
-
+  myJobs[0].cmd="quash";
+  nextId++;
 
   while (1)
   {
