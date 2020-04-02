@@ -421,7 +421,7 @@ void redirect()
       else if (pid == 0)
       {
         char *rightCmdName = rightCmd[0];
-        printf("%s\n", rightCmdName);
+        //printf("%s\n", rightCmdName);
         int outfd = open(rightCmdName, O_CREAT | O_WRONLY | O_TRUNC, 0666);
 
         dup2(outfd, STDOUT_FILENO);
