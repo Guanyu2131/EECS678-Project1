@@ -10,6 +10,8 @@
 #define MAX_LENGTH 1024
 static int pipeFound = 0;
 static int pipeIndex = 0;
+static int ampersandFound=0;
+static int ampersandIndex=0;
 static int numArgs = 0; // modified in parseInputStr
 static int hasRedirect = 0;
 static int redirectIndex = 0;
@@ -22,6 +24,7 @@ struct Process
   char* command;
 };
 static int totalJobs;
+static int nextId;
 static struct Process myJobs[MAX_LENGTH];
 
 int exitQuash(char *cmd)
@@ -126,6 +129,12 @@ void parseInputStr(char *inputStr, char **prgArgs) /* tokenizes input string and
       pipeIndex = i;
     }
 
+    if (strcmp(prgArgs[i], "&") == 0)
+    {
+      ampersandFound = 1;
+      ampersandIndex = i;
+    }
+
     parsed = strtok(NULL, " \n\t");
     i++;
   }
@@ -159,10 +168,6 @@ void exe(char **prgArgs)
 
   else if (pid == 0) // child
   {
-    totalJobs++;
-    myJobs[totalJobs-1].id=totalJobs-1;
-    myJobs[totalJobs-1].pid=getpid();
-    myJobs[totalJobs-1].command="";
     if (prgArgs[1] == NULL)
     {
       execlp(*prgArgs, *prgArgs, NULL);
@@ -220,6 +225,48 @@ void exePid(char **prgArgs, pid_t pid)
   }
 }
 
+void runBackground(char **inputArgs)
+{
+  if (ampersandIndex != 0)
+  {
+    char* cmd[ampersandIndex];
+    cmd[ampersandIndex]=NULL;
+    for (int i = 0; i < ampersandIndex; i++)
+    {
+      cmd[i] = inputArgs[i];
+      while((cmd[i][strlen(cmd[i])-1]==' ' || cmd[i][strlen(cmd[i])-1]=='\t')){
+        cmd[i][strlen(cmd[i])-1] = '\0';
+      }
+    }
+
+    int exitStatus;
+    pid_t pid;
+    totalJobs++;
+    myJobs[totalJobs-1].command="";
+    pid=fork();
+    if (pid < 0){ //error
+      fprintf(stderr, "Fork Failed for run process in background\n");
+      exit(-1);
+    }
+    else if(pid==0){ //child
+      printf("[%d] PID: %d running in background\n", nextId, getpid());
+      sleep(2.5);
+      exe(cmd);
+      printf("\n[%d] PID: %d finished COMMAND: %s\n\nQuash$ ", nextId, getpid(), cmd[0]);
+      exit(0);
+
+    }
+    else{ //parent
+      myJobs[totalJobs-1].id=nextId;
+      myJobs[totalJobs-1].pid=pid;
+      //
+      nextId++;
+      waitpid(pid, &exitStatus, SIGCHLD);
+
+    }
+  }
+}
+
 void makePipe(char **args)
 {
   if (pipeIndex != 0 && pipeIndex != numArgs)
@@ -233,9 +280,6 @@ void makePipe(char **args)
       while((leftCmd[i][strlen(leftCmd[i])-1]==' ' || leftCmd[i][strlen(leftCmd[i])-1]=='\t')){
         leftCmd[i][strlen(leftCmd[i])-1] = '\0';
       }
-      //printf("%s\n", leftCmd[i]);
-      //strcat(leftCmd[i], '\0');
-      //printf("Left arg %d: %s\n", i, leftCmd[i]);
     }
 
     int j = 0;
@@ -245,8 +289,6 @@ void makePipe(char **args)
       while((rightCmd[j][strlen(rightCmd[j])-1]==' ' || rightCmd[j][strlen(rightCmd[j])-1]=='\t')){
         leftCmd[i][strlen(leftCmd[i])-1] = '\0';
       }
-      //printf("%s\n", rightCmd[j]);
-      //strcat(rightCmd[i], '\0', 1);
       j++;
     }
 
@@ -268,11 +310,6 @@ void makePipe(char **args)
     }
     else if (pid1 == 0)
     {
-      /*totalJobs++;
-      myJobs[totalJobs-1].id=totalJobs-1;
-      myJobs[totalJobs-1].pid=getpid();
-      myJobs[totalJobs-1].command=leftCmd[0];*/
-
       dup2(fds[1], STDOUT_FILENO);
       close(fds[0]);
       exePid(leftCmd, pid1);
@@ -294,11 +331,6 @@ void makePipe(char **args)
 
     else if (pid2 == 0)
     {
-      /*totalJobs++;
-      myJobs[totalJobs-1].id=totalJobs-1;
-      myJobs[totalJobs-1].pid=getpid();
-      myJobs[totalJobs-1].command=rightCmd[0];*/
-
       dup2(fds[0], STDIN_FILENO);
       close(fds[1]);
       exePid(rightCmd, pid2);
@@ -343,7 +375,6 @@ void redirect(char **args)
       j++;
     }
 
-
     if (redirectSymbol == '>')
     {
       int status;
@@ -377,7 +408,7 @@ void redirect(char **args)
 
     else if (redirectSymbol == '<')
     {
-
+      
     }
   }
 
@@ -416,10 +447,11 @@ int main(int argc, char **argv, char **envp)
   char inputLine[MAX_LENGTH]; // command line
   char *inputArgs[100]; // args for command
   totalJobs=1;
-  myJobs[0].id=0;
+  nextId=1;
+  myJobs[0].id=nextId;
   myJobs[0].pid=getpid();
   myJobs[0].command="quash";
-
+  nextId++;
 
   while (1)
   {
@@ -461,6 +493,13 @@ int main(int argc, char **argv, char **envp)
           makePipe(inputArgs);
           pipeFound = 0;
           pipeIndex = 0;
+        }
+
+        else if (ampersandFound)
+        {
+          runBackground(inputArgs);
+          ampersandFound = 0;
+          ampersandIndex = 0;
         }
 
         else if (hasRedirect)
