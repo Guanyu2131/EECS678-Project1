@@ -161,7 +161,49 @@ void exe(char **prgArgs)
       fprintf(stderr, "Program Execution (without args) Failed\n");
       exit(-1);
     }
-    else // parent
+    else
+    {
+      execvp(prgArgs[0], prgArgs);
+      fprintf(stderr, "Program Execution (with args) Failed\n");
+      exit(-1);
+    }
+  }
+
+  else // parent
+  {
+    waitpid(pid, &exitStatus, 0);
+  }
+}
+
+void exePid(char **prgArgs, pid_t pid)
+{
+  // For testing
+  /*printf("%s\n", prgArgs[0]);
+  printf("%s\n", prgArgs[1]);
+  printf("%s\n", prgArgs[2]);
+  printf("\n");*/
+
+  int exitStatus;
+
+  if (pid < 0) // error message
+  {
+    fprintf(stderr, "Fork Failed\n");
+    exit(-1);
+  }
+
+  else if (pid == 0) // child
+  {
+    totalJobs++;
+    myJobs[totalJobs-1].id=totalJobs-1;
+    myJobs[totalJobs-1].pid=getpid();
+    myJobs[totalJobs-1].command="";
+    if (prgArgs[1] == NULL)
+    {
+      execlp(*prgArgs, *prgArgs, NULL);
+      fprintf(stderr, "Program Execution (without args) Failed\n");
+      exit(-1);
+    }
+    else
     {
       execvp(prgArgs[0], prgArgs);
       fprintf(stderr, "Program Execution (with args) Failed\n");
@@ -229,7 +271,7 @@ void makePipe(char **args)
       close(fds[0]);
       dup2(fds[1], STDOUT_FILENO);
       close(fds[1]);
-      exe(leftCmd);
+      exePid(leftCmd, pid1);
       exit(-1);
 
       /*if (execvp(leftCmd[0], leftCmd) < 0)
@@ -257,7 +299,7 @@ void makePipe(char **args)
       close(fds[1]);
       dup2(fds[0], STDIN_FILENO);
       close(fds[0]);
-      exe(rightCmd);
+      exePid(rightCmd, pid2);
       exit(-1);
 
       /*if (execvp(rightCmd[0], rightCmd) < 0)
@@ -280,6 +322,7 @@ void makePipe(char **args)
     printf("Syntax Error: Invalid use of '|' command.\n");
   }
 }
+
 
 int main(int argc, char **argv, char **envp)
 {
