@@ -13,13 +13,12 @@ static int ampersandIndex=0;
 static int numArgs = 0; // modified in parseInputStr
 static int hasRedirect = 0;
 static int redirectIndex = 0;
-static char* backgroundCommand;
 
 struct Process
 {
   int id;
   int pid;
-  char* cmd;
+  char* command;
 };
 static int totalJobs;
 static int nextId;
@@ -82,7 +81,7 @@ void jobs(char *directory){
   printf("Running Processes:\n");
   for (int i = 0; i < totalJobs; i++) {
     pid_t pid=getpid();
-    printf("[%d] PID: %d, COMMAND: %s\n", myJobs[i].id,  myJobs[i].pid,  myJobs[i].cmd);
+    printf("[%d] PID: %d, COMMAND: %s\n", myJobs[i].id,  myJobs[i].pid,  myJobs[i].command);
   }
 
 }
@@ -198,8 +197,7 @@ void runBackground(char **inputArgs)
     int exitStatus;
     pid_t pid;
     totalJobs++;
-    backgroundCommand=cmd[0];
-    printf("backgroundCommand is : %s\n", cmd[0] );
+    myJobs[totalJobs-1].command="";
     pid=fork();
     if (pid < 0){ //error
       fprintf(stderr, "Fork Failed for run process in background\n");
@@ -214,10 +212,9 @@ void runBackground(char **inputArgs)
 
     }
     else{ //parent
-      printf("command:%s\n", cmd[0]);
       myJobs[totalJobs-1].id=nextId;
       myJobs[totalJobs-1].pid=pid;
-      myJobs[totalJobs-1].cmd=backgroundCommand;
+      //
       nextId++;
       waitpid(pid, &exitStatus, SIGCHLD);
 
@@ -338,7 +335,7 @@ int main(int argc, char **argv, char **envp)
   nextId=1;
   myJobs[0].id=nextId;
   myJobs[0].pid=getpid();
-  myJobs[0].cmd="quash";
+  myJobs[0].command="quash";
   nextId++;
 
   while (1)
