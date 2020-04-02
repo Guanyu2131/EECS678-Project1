@@ -164,7 +164,7 @@ void exe(char **prgArgs)
     {
       execvp(prgArgs[0], prgArgs);
       fprintf(stderr, "Program Execution (with args) Failed\n");
-      printf("%s\n", prgArgs[0]);
+      //printf("%s\n", prgArgs[0]);
       exit(0);
     }
   }
@@ -188,9 +188,9 @@ void makePipe(char **args)
       while((leftCmd[i][strlen(leftCmd[i])-1]==' ' || leftCmd[i][strlen(leftCmd[i])-1]=='\t')){
         leftCmd[i][strlen(leftCmd[i])-1] = '\0';
       }
-      printf("%s\n", leftCmd[i]);
+      //printf("%s\n", leftCmd[i]);
       //strcat(leftCmd[i], '\0');
-      printf("Left arg %d: %s\n", i, leftCmd[i]);
+      //printf("Left arg %d: %s\n", i, leftCmd[i]);
     }
 
     int j = 0;
@@ -200,7 +200,7 @@ void makePipe(char **args)
       while((rightCmd[j][strlen(rightCmd[j])-1]==' ' || rightCmd[j][strlen(rightCmd[j])-1]=='\t')){
         leftCmd[i][strlen(leftCmd[i])-1] = '\0';
       }
-      printf("%s\n", rightCmd[j]);
+      //printf("%s\n", rightCmd[j]);
       //strcat(rightCmd[i], '\0', 1);
       j++;
     }
