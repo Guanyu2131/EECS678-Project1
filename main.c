@@ -8,6 +8,8 @@
 #define MAX_LENGTH 1024
 static int pipeFound = 0;
 static int pipeIndex = 0;
+static int ampersandFound=0;
+static int ampersandIndex=0;
 static int numArgs = 0; // modified in parseInputStr
 static int hasRedirect = 0;
 static int redirectIndex = 0;
@@ -117,6 +119,12 @@ void parseInputStr(char *inputStr, char **prgArgs) /* tokenizes input string and
       pipeIndex = i;
     }
 
+    if (strcmp(prgArgs[i], "&") == 0)
+    {
+      ampersandFound = 1;
+      ampersandIndex = i;
+    }
+
     parsed = strtok(NULL, " \n\t");
     i++;
   }
@@ -175,6 +183,22 @@ void exe(char **prgArgs)
   }
 }
 
+void runBackground(char **inputArgs)
+{
+  if (ampersandIndex != 0 && ampersandIndex != numArgs)
+  {
+    char* cmd[100];
+
+    for (int i = 0; i < ampersandIndex; i++)
+    {
+      cmd[i] = inputArgs[i];
+      while((cmd[i][strlen(cmd[i])-1]==' ' || cmd[i][strlen(cmd[i])-1]=='\t' || cmd[i][strlen(cmd[i])-1]=='&')){
+        cmd[i][strlen(cmd[i])-1] = '\0';
+      }
+    }
+  }
+}
+
 void makePipe(char **args)
 {
   if (pipeIndex != 0 && pipeIndex != numArgs)
@@ -188,9 +212,6 @@ void makePipe(char **args)
       while((leftCmd[i][strlen(leftCmd[i])-1]==' ' || leftCmd[i][strlen(leftCmd[i])-1]=='\t')){
         leftCmd[i][strlen(leftCmd[i])-1] = '\0';
       }
-      //printf("%s\n", leftCmd[i]);
-      //strcat(leftCmd[i], '\0');
-      //printf("Left arg %d: %s\n", i, leftCmd[i]);
     }
 
     int j = 0;
@@ -343,6 +364,13 @@ int main(int argc, char **argv, char **envp)
           makePipe(inputArgs);
           pipeFound = 0;
           pipeIndex = 0;
+        }
+
+        else if (ampersandFound)
+        {
+          runBackground(inputArgs);
+          ampersandFound = 0;
+          ampersandIndex = 0;
         }
 
         else if (hasRedirect)
