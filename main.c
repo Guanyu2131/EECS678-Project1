@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #define MAX_LENGTH 1024
 static int pipeFound = 0;
@@ -11,6 +13,7 @@ static int pipeIndex = 0;
 static int numArgs = 0; // modified in parseInputStr
 static int hasRedirect = 0;
 static int redirectIndex = 0;
+static char redirectSymbol = '\0';
 
 struct Process
 {
@@ -109,6 +112,12 @@ void parseInputStr(char *inputStr, char **prgArgs) /* tokenizes input string and
     if (strcmp(prgArgs[i], "<") == 0 || strcmp(prgArgs[i], ">") == 0)
     {
       hasRedirect = 1;
+      redirectIndex = i;
+
+      if (strcmp(prgArgs[i], "<") == 0)
+        redirectSymbol = '<';
+      else
+        redirectSymbol = '>';
     }
 
     if (strcmp(prgArgs[i], "|") == 0)
@@ -175,6 +184,42 @@ void exe(char **prgArgs)
   }
 }
 
+void exePid(char **prgArgs, pid_t pid)
+{
+  int exitStatus;
+
+  if (pid < 0) // error message
+  {
+    fprintf(stderr, "Fork Failed\n");
+    exit(-1);
+  }
+
+  else if (pid == 0) // child
+  {
+    totalJobs++;
+    myJobs[totalJobs-1].id=totalJobs-1;
+    myJobs[totalJobs-1].pid=getpid();
+    myJobs[totalJobs-1].command="";
+    if (prgArgs[1] == NULL)
+    {
+      execlp(*prgArgs, *prgArgs, NULL);
+      fprintf(stderr, "Program Execution (without args) Failed\n");
+      exit(0);
+    }
+    else
+    {
+      execvp(prgArgs[0], prgArgs);
+      fprintf(stderr, "Program Execution (with args) Failed\n");
+      exit(0);
+    }
+  }
+
+  else // parent
+  {
+    waitpid(pid, &exitStatus, 0);
+  }
+}
+
 void makePipe(char **args)
 {
   if (pipeIndex != 0 && pipeIndex != numArgs)
@@ -223,13 +268,14 @@ void makePipe(char **args)
     }
     else if (pid1 == 0)
     {
-      totalJobs++;
+      /*totalJobs++;
       myJobs[totalJobs-1].id=totalJobs-1;
       myJobs[totalJobs-1].pid=getpid();
-      myJobs[totalJobs-1].command=leftCmd[0];
+      myJobs[totalJobs-1].command=leftCmd[0];*/
+
       dup2(fds[1], STDOUT_FILENO);
       close(fds[0]);
-      exe(leftCmd);
+      exePid(leftCmd, pid1);
       exit(0);
     }
     else
@@ -244,15 +290,18 @@ void makePipe(char **args)
       fprintf(stderr, "Fork Failed for makePipe pid2\n");
       exit(-1);
     }
+
+
     else if (pid2 == 0)
     {
-      totalJobs++;
+      /*totalJobs++;
       myJobs[totalJobs-1].id=totalJobs-1;
       myJobs[totalJobs-1].pid=getpid();
-      myJobs[totalJobs-1].command=rightCmd[0];
+      myJobs[totalJobs-1].command=rightCmd[0];*/
+
       dup2(fds[0], STDIN_FILENO);
       close(fds[1]);
-      exe(rightCmd);
+      exePid(rightCmd, pid2);
       exit(0);
     }
 
@@ -266,6 +315,75 @@ void makePipe(char **args)
   else
   {
     printf("Syntax Error: Invalid use of '|' command.\n");
+  }
+}
+
+void redirect(char **args)
+{
+  if (redirectIndex != 0 && redirectIndex != numArgs)
+  {
+    char *leftCmd[50];
+    char *rightCmd[50];
+
+    for (int i = 0; i < redirectIndex; i++)
+    {
+      leftCmd[i] = args[i];
+      while((leftCmd[i][strlen(leftCmd[i])-1]==' ' || leftCmd[i][strlen(leftCmd[i])-1]=='\t')){
+        leftCmd[i][strlen(leftCmd[i])-1] = '\0';
+      }
+    }
+
+    int j = 0;
+    for (int i = redirectIndex + 1; i < redirectIndex; i++)
+    {
+      rightCmd[j] = args[i];
+      while((rightCmd[j][strlen(rightCmd[j])-1]==' ' || rightCmd[j][strlen(rightCmd[j])-1]=='\t')){
+        leftCmd[i][strlen(leftCmd[i])-1] = '\0';
+      }
+      j++;
+    }
+
+
+    if (redirectSymbol == '>')
+    {
+      int status;
+
+      pid_t pid;
+      pid = fork();
+
+      if (pid < 0)
+      {
+        fprintf(stderr, "Fork Failed!\n");
+        exit(-1);
+      }
+
+      else if (pid == 0)
+      {
+        char *rightCmdName = rightCmd[0];
+        int output = open(rightCmdName, O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
+
+        dup2(output, STDOUT_FILENO);
+        exe(rightCmd);
+
+        close(output);
+        exit(0);
+      }
+
+      else
+      {
+        waitpid(pid, &status, 0);
+      }
+    }
+
+    else if (redirectSymbol == '<')
+    {
+
+    }
+  }
+
+  else
+  {
+    printf("Unable to redirect!\n");
   }
 }
 
@@ -347,7 +465,10 @@ int main(int argc, char **argv, char **envp)
 
         else if (hasRedirect)
         {
+          redirect(inputArgs);
           hasRedirect = 0;
+          redirectIndex = 0;
+          redirectSymbol = '\0';
         }
 
         else
