@@ -205,7 +205,7 @@ void runBackground(char **inputArgs)
     }
     else if(pid==0){ //child
       printf("[%d] PID: %d running in background\n", nextId, getpid());
-      sleep(5);
+      sleep(2.5);
       exe(cmd);
       printf("\n[%d] PID: %d finished COMMAND: %s\n\nQuash$ ", nextId, getpid(), cmd[0]);
       exit(0);
