@@ -372,7 +372,7 @@ void redirect()
     char *leftCmd[50];
     char *rightCmd[50];
 
-    char *parseLeft = strtok(inputLineCopy, "|");
+    char *parseLeft = strtok(inputLineCopy, "<>");
     char *parseRight = strtok(NULL, "\0");
     int i = 0;
     int j = 0;
@@ -421,12 +421,13 @@ void redirect()
       else if (pid == 0)
       {
         char *rightCmdName = rightCmd[0];
-        int output = open(rightCmdName, O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
+        printf("%s\n", rightCmdName);
+        int outfd = open(rightCmdName, O_CREAT | O_WRONLY | O_TRUNC, 0666);
 
-        dup2(output, STDOUT_FILENO);
+        dup2(outfd, STDOUT_FILENO);
         exe(rightCmd);
 
-        close(output);
+        close(outfd);
         exit(0);
       }
 
