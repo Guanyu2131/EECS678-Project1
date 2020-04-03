@@ -438,21 +438,21 @@ void redirect()
     {
       if (strcmp(leftCmd[0], "quash") == 0)
       {
-        pid_t myPid;
-        myPid = fork();
-        int stat;
+        //pid_t myPid;
+        //myPid = fork();
+      //  int stat;
         char *fileName = rightCmd[0];
         //int FD[2];
         //pipe(FD);
 
-        if (myPid < 0)
+        /*if (myPid < 0)
         {
           fprintf(stderr, "Fork failed for reading commands from file\n");
           exit(-1);
-        }
+        }*/
 
-        else if (myPid == 0)
-        {
+        //else if (myPid == 0)
+        //{
           FILE *filePtr;
           char *cmdFromFile;
           filePtr = fopen(fileName, "r");
@@ -462,7 +462,7 @@ void redirect()
           {
             fprintf(stderr, "Command file not found!\n");
             fclose(filePtr);
-            exit(-1);
+            //exit(-1);
           }
 
           while (fgets(cmdFromFile, MAX_LENGTH, filePtr))
@@ -479,16 +479,16 @@ void redirect()
           }
 
           fclose(filePtr);
-          exit(0);
-        }
+          //exit(0);
+        //}
 
-        else
+        /*else
         {
           waitpid(myPid, &stat, 0);
           /*close(FD[1]);
           read(FD[0], &EXIT_QUASH, sizeof(EXIT_QUASH));
-          close(FD[0]);*/
-        }
+          close(FD[0]);
+        }*/
       }
 
       else
@@ -542,6 +542,7 @@ int runCmdFromFile(char *cmdFromFile)
 
   if (exitQuash(cmdArgs[0]))
   {
+    printf("Exiting Quash...\n");
     exit(0);
   }
 
