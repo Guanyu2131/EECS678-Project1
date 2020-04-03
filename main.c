@@ -554,7 +554,6 @@ void redirect()
           waitpid(myPid, &stat, 0);
         }
       }
->>>>>>> da50fff828516c421c7d933d3c931e429b9d526d
     }
   }
 
