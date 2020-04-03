@@ -272,6 +272,10 @@ void runBackground(char **inputArgs)
     }
 
   }
+  else
+  {
+    printf("Syntax Error: Invalid use of '&' command.\n");
+  }
 }
 
 void makePipe()
@@ -509,7 +513,6 @@ void redirect()
 
 int runCmdFromFile(char *cmdFromFile)
 {
-  printf("Quash$ %s\n", cmdFromFile);
   cmdFromFile[strlen(cmdFromFile)-1] = '\0';
 
   while((cmdFromFile[strlen(cmdFromFile)-1]==' ' || cmdFromFile[strlen(cmdFromFile)-1]=='\t'))
