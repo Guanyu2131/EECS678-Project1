@@ -177,13 +177,13 @@ void exe(char **prgArgs)
     if (prgArgs[1] == NULL)
     {
       execlp(*prgArgs, *prgArgs, NULL);
-      fprintf(stderr, "Program Execution (without args) Failed\n");
+      printf("No executable found for %s\n", prgArgs[0]);
       exit(0);
     }
     else
     {
       execvp(prgArgs[0], prgArgs);
-      fprintf(stderr, "Program Execution (with args) Failed\n");
+      printf("No executable found for %s\n", prgArgs[0]);
       //printf("%s\n", prgArgs[0]);
       exit(0);
     }
@@ -210,13 +210,13 @@ void exePid(char **prgArgs, pid_t pid)
     if (prgArgs[1] == NULL)
     {
       execvp(prgArgs[0], prgArgs);
-      fprintf(stderr, "Program Execution (without args) Failed\n");
+      printf("No executable found for %s\n", prgArgs[0]);
       exit(0);
     }
     else
     {
       execvp(prgArgs[0], prgArgs);
-      fprintf(stderr, "Program Execution (with args) Failed\n");
+      printf("No executable found for %s\n", prgArgs[0]);
       exit(0);
     }
   }
@@ -507,7 +507,7 @@ void redirect()
 
   else
   {
-    printf("Unable to redirect!\n");
+    printf("Invalid use of '%c' command!\n", redirectSymbol);
   }
 }
 
