@@ -16,6 +16,8 @@ static int numArgs = 0; // modified in parseInputStr
 static int hasRedirect = 0;
 static int redirectIndex = 0;
 static char redirectSymbol = '\0';
+static pid_t processID;
+static char *backgroundProcess;
 char *inputLineCopy;
 
 struct Process
@@ -202,10 +204,6 @@ void exePid(char **prgArgs, pid_t pid)
 
   else if (pid == 0) // child
   {
-    totalJobs++;
-    myJobs[totalJobs-1].id=totalJobs-1;
-    myJobs[totalJobs-1].pid=getpid();
-    myJobs[totalJobs-1].command="";
     if (prgArgs[1] == NULL)
     {
       execvp(prgArgs[0], prgArgs);
@@ -239,32 +237,39 @@ void runBackground(char **inputArgs)
         cmd[i][strlen(cmd[i])-1] = '\0';
       }
     }
+    ampersandFound=0;
+
 
     int exitStatus;
     pid_t pid;
-    totalJobs++;
-    myJobs[totalJobs-1].command="";
+
+
     pid=fork();
+    processID=pid;
+
     if (pid < 0){ //error
       fprintf(stderr, "Fork Failed for run process in background\n");
       exit(-1);
     }
     else if(pid==0){ //child
+      //sid=setsid();
       printf("[%d] PID: %d running in background\n", nextId, getpid());
+      //backgroundProcess=cmd[0];
       sleep(2.5);
       exe(cmd);
       printf("\n[%d] PID: %d finished COMMAND: %s\n\nQuash$ ", nextId, getpid(), cmd[0]);
-      exit(0);
+      exit(exitStatus);
 
     }
     else{ //parent
+      totalJobs++;
+      myJobs[totalJobs-1].command=backgroundProcess;
       myJobs[totalJobs-1].id=nextId;
       myJobs[totalJobs-1].pid=pid;
-      //
       nextId++;
-      waitpid(pid, &exitStatus, SIGCHLD);
-
+      //waitpid(pid, &exitStatus, 0);
     }
+
   }
 }
 
@@ -488,6 +493,7 @@ int main(int argc, char **argv, char **envp)
   {
       printf("Quash$ ");
       fgets(inputLine, MAX_LENGTH, stdin);
+
       inputLine[strlen(inputLine)-1] = '\0';
 
       while((inputLine[strlen(inputLine)-1]==' ' || inputLine[strlen(inputLine)-1]=='\t')){
@@ -500,7 +506,14 @@ int main(int argc, char **argv, char **envp)
         parseInputStr(inputLine, inputArgs);
 
         printf("\n");
-
+        int exitStatus;
+        pid_t returnPid=waitpid(processID, &exitStatus, WNOHANG);
+        if(returnPid==processID){
+          totalJobs--;
+          while(totalJobs>1){
+            totalJobs--;
+          }
+        }
         if (exitQuash(inputArgs[0]))
         {
           printf("Exiting Quash...\n");
@@ -508,6 +521,7 @@ int main(int argc, char **argv, char **envp)
         }
 
         else if (checkJobs(inputArgs[0])){
+
           jobs(inputArgs[1]);
         }
 
@@ -530,6 +544,10 @@ int main(int argc, char **argv, char **envp)
 
         else if (ampersandFound)
         {
+          if(strcmp(inputArgs[0], "jobs  ")!=0){
+            backgroundProcess=inputArgs[0];
+          }
+
           runBackground(inputArgs);
           ampersandFound = 0;
           ampersandIndex = 0;
