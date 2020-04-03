@@ -509,6 +509,7 @@ void redirect()
 
 int runCmdFromFile(char *cmdFromFile)
 {
+  printf("Quash$ %s\n", cmdFromFile);
   cmdFromFile[strlen(cmdFromFile)-1] = '\0';
 
   while((cmdFromFile[strlen(cmdFromFile)-1]==' ' || cmdFromFile[strlen(cmdFromFile)-1]=='\t'))
