@@ -150,12 +150,6 @@ void parseInputStr(char *inputStr, char **prgArgs) /* tokenizes input string and
 
 void exe(char **prgArgs)
 {
-  // For testing
-  // printf("%s\n", prgArgs[0]);
-  // //printf("%s\n", prgArgs[1]);
-  // //printf("%s\n", prgArgs[2]);
-  // printf("\n");
-
   int exitStatus;
 
   pid_t pid;
@@ -421,7 +415,6 @@ void redirect()
       else if (pid == 0)
       {
         char *rightCmdName = rightCmd[0];
-        //printf("%s\n", rightCmdName);
         int outfd = open(rightCmdName, O_CREAT | O_WRONLY | O_TRUNC, 0666);
 
         dup2(outfd, STDOUT_FILENO);
@@ -439,13 +432,37 @@ void redirect()
 
     else if (redirectSymbol == '<')
     {
+      pid_t myPid;
+      myPid = fork();
+      int stat;
 
+      if (myPid < 0)
+      {
+        fprintf(stderr, "Fork failed in '<' if-else block\n");
+        exit(-1);
+      }
+
+      else if (myPid == 0)
+      {
+        char *fileName = rightCmd[0];
+        int infd;
+        infd = open(fileName, O_RDONLY);
+        dup2(infd, STDIN_FILENO);
+        exePid(leftCmd, myPid);
+        close(infd);
+        exit(0);
+      }
+
+      else
+      {
+        waitpid(myPid, &stat, 0);
+      }
     }
   }
 
   else
   {
-    printf("Unable to redirect!\n");
+    printf("Invalid use of '%c' command!\n", redirectSymbol);
   }
 }
 
