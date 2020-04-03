@@ -519,6 +519,15 @@ int runCmdFromFile(char *cmdFromFile)
   char *cmdArgs[100];
   parseInputStr(cmdFromFile, cmdArgs);
 
+  int exitStatus;
+  pid_t returnPid=waitpid(processID, &exitStatus, WNOHANG);
+  if(returnPid==processID){
+    totalJobs--;
+    while(totalJobs>1){
+      totalJobs--;
+    }
+  }
+
   if (exitQuash(cmdArgs[0]))
   {
     printf("Exiting Quash...\n");
@@ -547,6 +556,8 @@ int runCmdFromFile(char *cmdFromFile)
 
   else if (ampersandFound)
   {
+    char *bgProcess=strdup(cmdArgs[0]);
+    myJobs[totalJobs].commandString=bgProcess;
     runBackground(cmdArgs);
     ampersandFound = 0;
     ampersandIndex = 0;
