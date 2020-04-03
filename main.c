@@ -17,14 +17,13 @@ static int hasRedirect = 0;
 static int redirectIndex = 0;
 static char redirectSymbol = '\0';
 static pid_t processID;
-static char *backgroundProcess;
 char *inputLineCopy;
 
 struct Process
 {
   int id;
   int pid;
-  char* command;
+  char* commandString;
 };
 static int totalJobs;
 static int nextId;
@@ -87,7 +86,7 @@ void jobs(char *directory){
   printf("Running Processes:\n");
   for (int i = 0; i < totalJobs; i++) {
     pid_t pid=getpid();
-    printf("[%d] PID: %d, COMMAND: %s\n", myJobs[i].id,  myJobs[i].pid,  myJobs[i].command);
+    printf("[%d] PID: %d, COMMAND: %s\n", myJobs[i].id,  myJobs[i].pid,  myJobs[i].commandString);
   }
 
 }
@@ -152,6 +151,12 @@ void parseInputStr(char *inputStr, char **prgArgs) /* tokenizes input string and
 
 void exe(char **prgArgs)
 {
+  // For testing
+  // printf("%s\n", prgArgs[0]);
+  // //printf("%s\n", prgArgs[1]);
+  // //printf("%s\n", prgArgs[2]);
+  // printf("\n");
+
   int exitStatus;
 
   pid_t pid;
@@ -220,7 +225,7 @@ void exePid(char **prgArgs, pid_t pid)
 
 void runBackground(char **inputArgs)
 {
-  if (ampersandIndex != 0)
+  if (ampersandIndex > 0 && strcmp(inputArgs[0], "jobs")!=0)
   {
     char* cmd[ampersandIndex];
     cmd[ampersandIndex]=NULL;
@@ -248,7 +253,6 @@ void runBackground(char **inputArgs)
     else if(pid==0){ //child
       //sid=setsid();
       printf("[%d] PID: %d running in background\n", nextId, getpid());
-      //backgroundProcess=cmd[0];
       sleep(2.5);
       exe(cmd);
       printf("\n[%d] PID: %d finished COMMAND: %s\n\nQuash$ ", nextId, getpid(), cmd[0]);
@@ -257,7 +261,6 @@ void runBackground(char **inputArgs)
     }
     else{ //parent
       totalJobs++;
-      myJobs[totalJobs-1].command=backgroundProcess;
       myJobs[totalJobs-1].id=nextId;
       myJobs[totalJobs-1].pid=pid;
       nextId++;
@@ -420,6 +423,7 @@ void redirect()
       else if (pid == 0)
       {
         char *rightCmdName = rightCmd[0];
+        //printf("%s\n", rightCmdName);
         int outfd = open(rightCmdName, O_CREAT | O_WRONLY | O_TRUNC, 0666);
 
         dup2(outfd, STDOUT_FILENO);
@@ -437,37 +441,13 @@ void redirect()
 
     else if (redirectSymbol == '<')
     {
-      pid_t myPid;
-      myPid = fork();
-      int stat;
 
-      if (myPid < 0)
-      {
-        fprintf(stderr, "Fork failed in '<' if-else block\n");
-        exit(-1);
-      }
-
-      else if (myPid == 0)
-      {
-        char *fileName = rightCmd[0];
-        int infd;
-        infd = open(fileName, O_RDONLY);
-        dup2(infd, STDIN_FILENO);
-        exePid(leftCmd, myPid);
-        close(infd);
-        exit(0);
-      }
-
-      else
-      {
-        waitpid(myPid, &stat, 0);
-      }
     }
   }
 
   else
   {
-    printf("Invalid use of '%c' command!\n", redirectSymbol);
+    printf("Unable to redirect!\n");
   }
 }
 
@@ -503,7 +483,7 @@ int main(int argc, char **argv, char **envp)
   nextId=1;
   myJobs[0].id=nextId;
   myJobs[0].pid=getpid();
-  myJobs[0].command="quash";
+  myJobs[0].commandString="./quash";
   nextId++;
 
   while (1)
@@ -561,10 +541,8 @@ int main(int argc, char **argv, char **envp)
 
         else if (ampersandFound)
         {
-          if(strcmp(inputArgs[0], "jobs  ")!=0){
-            backgroundProcess=inputArgs[0];
-          }
-
+          char *bgProcess=strdup(inputArgs[0]);
+          myJobs[totalJobs].commandString=bgProcess;
           runBackground(inputArgs);
           ampersandFound = 0;
           ampersandIndex = 0;
