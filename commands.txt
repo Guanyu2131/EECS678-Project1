@@ -1,0 +1,12 @@
+uname
+sort < num.txt
+ls -m
+cd ..
+ls -a
+cd EECS678-Project1
+ls | head -3
+ls > dir
+cat dir
+rm dir
+cd
+quit
