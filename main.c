@@ -17,6 +17,7 @@ static int hasRedirect = 0;
 static int redirectIndex = 0;
 static char redirectSymbol = '\0';
 char *inputLineCopy;
+//int EXIT_QUASH = 0;
 
 struct Process
 {
@@ -27,6 +28,9 @@ struct Process
 static int totalJobs;
 static int nextId;
 static struct Process myJobs[MAX_LENGTH];
+
+int runCmdFromFile(char *cmdFromFile);
+
 
 int exitQuash(char *cmd)
 {
@@ -432,30 +436,88 @@ void redirect()
 
     else if (redirectSymbol == '<')
     {
-      pid_t myPid;
-      myPid = fork();
-      int stat;
-
-      if (myPid < 0)
+      if (strcmp(leftCmd[0], "quash") == 0)
       {
-        fprintf(stderr, "Fork failed in '<' if-else block\n");
-        exit(-1);
-      }
-
-      else if (myPid == 0)
-      {
+        pid_t myPid;
+        myPid = fork();
+        int stat;
         char *fileName = rightCmd[0];
-        int infd;
-        infd = open(fileName, O_RDONLY);
-        dup2(infd, STDIN_FILENO);
-        exePid(leftCmd, myPid);
-        close(infd);
-        exit(0);
+        //int FD[2];
+        //pipe(FD);
+
+        if (myPid < 0)
+        {
+          fprintf(stderr, "Fork failed for reading commands from file\n");
+          exit(-1);
+        }
+
+        else if (myPid == 0)
+        {
+          FILE *filePtr;
+          char *cmdFromFile;
+          filePtr = fopen(fileName, "r");
+          //int returnStatus = 0;
+
+          if (filePtr == NULL)
+          {
+            fprintf(stderr, "Command file not found!\n");
+            fclose(filePtr);
+            exit(-1);
+          }
+
+          while (fgets(cmdFromFile, MAX_LENGTH, filePtr))
+          {
+            runCmdFromFile(cmdFromFile);
+          //  printf("%d/n", returnStatus);
+
+          /*  if (returnStatus == 1)
+            {
+              close(FD[0]);
+              write(FD[1], &returnStatus, sizeof(returnStatus));
+              close(FD[1]);
+            } */
+          }
+
+          fclose(filePtr);
+          exit(0);
+        }
+
+        else
+        {
+          waitpid(myPid, &stat, 0);
+          /*close(FD[1]);
+          read(FD[0], &EXIT_QUASH, sizeof(EXIT_QUASH));
+          close(FD[0]);*/
+        }
       }
 
       else
       {
-        waitpid(myPid, &stat, 0);
+        pid_t myPid;
+        myPid = fork();
+        int stat;
+
+        if (myPid < 0)
+        {
+          fprintf(stderr, "Fork failed in '<' if-else block\n");
+          exit(-1);
+        }
+
+        else if (myPid == 0)
+        {
+          char *fileName = rightCmd[0];
+          int infd;
+          infd = open(fileName, O_RDONLY);
+          dup2(infd, STDIN_FILENO);
+          exePid(leftCmd, myPid);
+          close(infd);
+          exit(0);
+        }
+
+        else
+        {
+          waitpid(myPid, &stat, 0);
+        }
       }
     }
   }
@@ -464,6 +526,66 @@ void redirect()
   {
     printf("Invalid use of '%c' command!\n", redirectSymbol);
   }
+}
+
+int runCmdFromFile(char *cmdFromFile)
+{
+  cmdFromFile[strlen(cmdFromFile)-1] = '\0';
+
+  while((cmdFromFile[strlen(cmdFromFile)-1]==' ' || cmdFromFile[strlen(cmdFromFile)-1]=='\t'))
+    cmdFromFile[strlen(cmdFromFile)-1] = '\0';
+
+  inputLineCopy = strdup(cmdFromFile);
+
+  char *cmdArgs[100];
+  parseInputStr(cmdFromFile, cmdArgs);
+
+  if (exitQuash(cmdArgs[0]))
+  {
+    exit(0);
+  }
+
+  else if (checkJobs(cmdArgs[0])){
+    jobs(cmdArgs[1]);
+  }
+
+  else if (checkChangeDirectory(cmdArgs[0])){
+    changeDirectory(cmdArgs[1]);
+  }
+
+  else if (strcmp(cmdArgs[0], "set") == 0)
+  {
+    setPath(cmdArgs[1]);
+  }
+
+  else if (pipeFound)
+  {
+    makePipe();
+    pipeFound = 0;
+    pipeIndex = 0;
+  }
+
+  else if (ampersandFound)
+  {
+    runBackground(cmdArgs);
+    ampersandFound = 0;
+    ampersandIndex = 0;
+  }
+
+  else if (hasRedirect)
+  {
+    redirect();
+    hasRedirect = 0;
+    redirectIndex = 0;
+    redirectSymbol = '\0';
+  }
+
+  else
+  {
+    exe(cmdArgs);
+  }
+
+  return 0;
 }
 
 int main(int argc, char **argv, char **envp)
@@ -503,6 +625,12 @@ int main(int argc, char **argv, char **envp)
 
   while (1)
   {
+      /*if (EXIT_QUASH == 1)
+      {
+        printf("Exiting Quash...\n");
+        exit(0);
+      }*/
+
       printf("Quash$ ");
       fgets(inputLine, MAX_LENGTH, stdin);
       inputLine[strlen(inputLine)-1] = '\0';
@@ -527,7 +655,6 @@ int main(int argc, char **argv, char **envp)
         else if (checkJobs(inputArgs[0])){
           jobs(inputArgs[1]);
         }
-
 
         else if (checkChangeDirectory(inputArgs[0])){
           changeDirectory(inputArgs[1]);
