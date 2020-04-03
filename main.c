@@ -445,49 +445,12 @@ void redirect()
 
     else if (redirectSymbol == '<')
     {
-      pid_t myPid;
-      myPid = fork();
-      int stat;
-
-      if (myPid < 0)
-      {
-        fprintf(stderr, "Fork failed in '<' if-else block\n");
-        exit(-1);
-      }
-
-      else if (myPid == 0)
-      {
-        char *fileName = rightCmd[0];
-        int infd;
-        infd = open(fileName, O_RDONLY);
-        dup2(infd, STDIN_FILENO);
-        exePid(leftCmd, myPid);
-        close(infd);
-        exit(0);
-      }
-
-      else
-      {
-        waitpid(myPid, &stat, 0);
-      }
-
       if (strcmp(leftCmd[0], "quash") == 0)
       {
         //pid_t myPid;
         //myPid = fork();
-      //  int stat;
+        //  int stat;
         char *fileName = rightCmd[0];
-        //int FD[2];
-        //pipe(FD);
-
-        /*if (myPid < 0)
-        {
-          fprintf(stderr, "Fork failed for reading commands from file\n");
-          exit(-1);
-        }*/
-
-        //else if (myPid == 0)
-        //{
           FILE *filePtr;
           char *cmdFromFile;
           filePtr = fopen(fileName, "r");
@@ -503,27 +466,8 @@ void redirect()
           while (fgets(cmdFromFile, MAX_LENGTH, filePtr))
           {
             runCmdFromFile(cmdFromFile);
-          //  printf("%d/n", returnStatus);
-
-          /*  if (returnStatus == 1)
-            {
-              close(FD[0]);
-              write(FD[1], &returnStatus, sizeof(returnStatus));
-              close(FD[1]);
-            } */
           }
-
           fclose(filePtr);
-          //exit(0);
-        //}
-
-        /*else
-        {
-          waitpid(myPid, &stat, 0);
-          /*close(FD[1]);
-          read(FD[0], &EXIT_QUASH, sizeof(EXIT_QUASH));
-          close(FD[0]);
-        }*/
       }
 
       else
